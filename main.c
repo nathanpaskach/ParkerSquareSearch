@@ -2,37 +2,46 @@
 #include "bigd.h"
 
 /*
- *   a | b | c 
- *  ---+---+---
- *   d | e | f 
- *  ---+---+---
- *   g | h | i 
+ *  0 < a < b < c-a
+ *  b =/= 2a
+ *
+ *     c-b   | c+(a+b) |   c-a   
+ *  ---------+---------+---------
+ *   c-(a-b) |    c    |  c+(a-b)  
+ *  ---------+---------+---------
+ *     c+a   | c-(a+b) |  c+b 
 */
 
-int checkSquare(BIGD *nums, BIGD *sums);
+int checkSquare(BIGD *seeds, BIGD *nums, BIGD *sums);
 
 int main(int argc, char *argv[])
 {
     // Initialize square as a=1, b=2, ...
-    BIGD nums[9];
-    int numToSet = 1;
-    for(int i = 0; numToSet <= 9; i = (i + 7) % 9)
+	BIGD seedLevel = bdNew();
+	bdSetZero(seedLevel);
+	BIGD seedRow = bdNew();
+	bdSetEqual(seedRow, seedLevel);
+    BIGD seeds[3];
+    for(int i = 0; i < 3; i++)
     {
-        nums[i] = bdNew();
-        bdSetShort(nums[i], numToSet++);
+        seeds[i] = bdNew();
+		bdSetZero(seeds[i]);
     }
+    BIGD nums[9];
     BIGD sums[9];
     for(int i = 0; i < 9; i++)
     {
+        nums[i] = bdNew();
         sums[i] = bdNew();
     }
     int result;
     unsigned long long try = 0;
+    unsigned long long gigaTry = 0;
     do
     {
         try++;
-        result = checkSquare(nums, sums);
-        if(result == 0)
+        result = checkSquare(seeds, nums, sums);
+        if(result == 1)
         {
             // We found one!
             for(int i = 0; i < 9; i++)
@@ -41,23 +50,11 @@ int main(int argc, char *argv[])
             }
             break;
         }
-        int numIsRepeated;
-        do
+        if(try % 1000000000 == 0)
         {
-            numIsRepeated = 0;
-            bdIncrement(nums[result - 1]);
-            for(int i = 0; i < 9; i++)
-            {
-                if(i == result - 1)
-                {
-                    continue;
-                }
-                numIsRepeated |= bdIsEqual_ct(nums[i], nums[result - 1]);
-            }
-        } while(numIsRepeated != 0);
-        if(try % 100000 == 0)
-        {
-            printf("\n%llu tries...\n", try);
+			try = 0;
+			gigaTry++;
+            printf("\n%llu Billion tries...\n", gigaTry);
             printf("Current square:\n");
             for(int i = 0; i < 9; i++)
             {
@@ -68,117 +65,131 @@ int main(int argc, char *argv[])
             {
                 bdPrintDecimal("", sums[i], "\n");
             }
+            printf("\nCurrent seeds:\n");
+            for(int i = 0; i < 3; i++)
+            {
+                bdPrintDecimal("", seeds[i], "\n");
+            }
         }
+		if(bdCompare_ct(seedLevel, seeds[0]) == 0)
+		{
+			bdIncrement(seedLevel);
+			bdSetZero(seeds[0]);
+			bdSetZero(seeds[1]);
+			bdSetEqual(seeds[2], seedLevel);
+			bdSetEqual(seedRow, seedLevel);
+		}
+		else if(bdCompare_ct(seedRow, seeds[1]) == 0)
+		{
+			bdSetZero(seeds[1]);
+			bdIncrement(seeds[0]);
+			bdDecrement(seedRow);
+			bdSetEqual(seeds[2], seedRow);
+		}
+		else
+		{
+			bdIncrement(seeds[1]);
+			bdDecrement(seeds[2]);
+		}
     } while(1);
     
-    for(int i = 0; i < 9; i++)
+    for(int i = 0; i < 3; i++)
     {
-        bdFree(&nums[i]);
+		bdFree(&seeds[i]);
     }
     for(int i = 0; i < 9; i++)
     {
+        bdFree(&nums[i]);
         bdFree(&sums[i]);
     }
     return 0;
 }
 
-int checkSquare(BIGD *nums, BIGD *sums)
+int checkSquare(BIGD *seeds, BIGD *nums, BIGD *sums)
 {
-    BIGD squares[9];
-    BIGD numSums[9];
-    for(int i = 0; i < 9; i++)
+	if(bdCompare_ct(seeds[0], seeds[1]) >= 0)
+	{
+		return 0;
+	}
+	BIGD cma = bdNew();
+	bdSubtract(cma, seeds[2], seeds[0]);
+	if(bdCompare_ct(seeds[1], cma) >= 0)
+	{
+		bdFree(&cma);
+		return 0;
+	}
+	bdFree(&cma);
+	BIGD apa = bdNew();
+	bdAdd_s(seeds[0], seeds[0], seeds[0]);
+	if(bdIsEqual_ct(seeds[1], apa))
+	{
+		bdFree(&apa);
+		return 0;
+	}
+	bdFree(&apa);
+    BIGD apb = bdNew();
+	BIGD amb = bdNew();
+	bdAdd(apb, seeds[0], seeds[1]);
+	bdSubtract(amb, seeds[0], seeds[1]);
+	
+	bdSubtract(nums[0], seeds[2], seeds[1]);
+	bdAdd(nums[1], seeds[2], apb);
+	bdSubtract(nums[2], seeds[2], seeds[0]);
+	bdSubtract(nums[3], seeds[2], amb);
+	bdSetEqual(nums[4], seeds[2]);
+	bdAdd(nums[5], seeds[2], amb);
+	bdAdd(nums[6], seeds[2], seeds[0]);
+	bdSubtract(nums[7], seeds[2], apb);
+	bdAdd(nums[8], seeds[2], seeds[1]);
+	
+	// Check if all nums are square numbers
+	int allAreSquares = 1;
+	for(int i = 0; i < 9; i++)
+	{
+		BIGD checker = bdNew();
+		bdSqrt(checker, nums[i]);
+		bdSquare_s(checker, checker);
+		allAreSquares &= bdIsEqual_ct(checker, nums[i]);
+		bdFree(&checker);
+		if(!allAreSquares)
+		{
+			break;
+		}
+	}
+	
+	for(int i = 0; i < 8; i++)
     {
-        squares[i] = bdNew();
-        bdSquare(squares[i], nums[i]);
-        numSums[i] = bdNew();
-        bdSetZero(numSums[i]);
-    }
-    BIGD allSums[8];
-    for(int i = 0; i < 8; i++)
-    {
-        allSums[i] = bdNew();
-        bdSetZero(allSums[i]);
+        bdSetZero(sums[i]);
     }
     for(int i = 0; i < 3; i++)
     {
         for(int j = i * 3; j < i * 3 + 3; j++)
         {
-            bdAdd(allSums[i], allSums[i], squares[j]);
+            bdAdd(sums[i], sums[i], nums[j]);
         }
     }
     for(int i = 3; i < 6; i++)
     {
         for(int j = i - 3; j < 9; j += 3)
         {
-            bdAdd(allSums[i], allSums[i], squares[j]);
+            bdAdd(sums[i], sums[i], nums[j]);
         }
     }
-    bdAdd(allSums[6], squares[0], squares[4]);
-    bdAdd(allSums[6], allSums[6], squares[8]);
+    bdAdd(sums[6], nums[0], nums[4]);
+    bdAdd(sums[6], sums[6], nums[8]);
     
-    bdAdd(allSums[7], squares[2], squares[4]);
-    bdAdd(allSums[7], allSums[7], squares[6]);
-    
-    // Check if all are equal
+    bdAdd(sums[7], nums[2], nums[4]);
+    bdAdd(sums[7], sums[7], nums[6]);
+	
+	// Check if all are equal
     int allAreEqual = 1;
     for(int i = 0; i < 7; i++)
     {
-        allAreEqual &= bdIsEqual_ct(allSums[i], allSums[i + 1]);
+        allAreEqual &= bdIsEqual_ct(sums[i], sums[i + 1]);
     }
-    if(allAreEqual)
-    {
-        return 0;
-    }
-    
-    // Figure out which entry to increment
-    int numSumList[9][5] =
-    {
-        {0, 3, 6, -1, -1},
-        {0, 4, -1, -1, -1},
-        {0, 5, 7, -1, -1},
-        {1, 3, -1, -1, -1},
-        {1, 4, 6, 7, -1},
-        {1, 5, -1, -1, -1},
-        {2, 3, 7, -1, -1},
-        {2, 4, -1, -1, -1},
-        {2, 5, 6, -1, -1}
-    };
-    BIGD remainder = bdNew();
-    for(int i = 0; i < 9; i++)
-    {
-        int j = 0;
-        while(numSumList[i][j] != -1)
-        {
-            bdAdd(numSums[i], numSums[i], allSums[numSumList[i][j]]);
-            j++;
-        }
-        BIGD bigJ = bdNew();
-        bdSetShort(bigJ, j);
-        bdDivide_s(numSums[i], remainder, numSums[i], bigJ);
-        bdFree(&bigJ);
-    }
-    bdFree(&remainder);
-    // Fixing the first number as 1. Don't check it
-    int minNumSumIndex = 1;
-    for(int i = 2; i < 9; i++)
-    {
-        if(bdCompare_ct(numSums[minNumSumIndex], numSums[i]) > 0)
-        {
-            minNumSumIndex = i;
-        }
-    }
-    
-    for(int i = 0; i < 9; i++)
-    {
-        bdFree(&squares[i]);
-        // bdSetEqual(sums[i], numSums[i]);
-        bdFree(&numSums[i]);
-    }
-    for(int i = 0; i < 8; i++)
-    {
-        bdSetEqual(sums[i], allSums[i]);
-        bdFree(&allSums[i]);
-    }
-    
-    return minNumSumIndex + 1;
+	
+	bdFree(&apb);
+	bdFree(&amb);
+	
+	return allAreSquares && allAreEqual;
 }
