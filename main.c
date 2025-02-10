@@ -9,23 +9,29 @@
  *   g | h | i 
 */
 
-int checkSquare(BIGD *nums);
+int checkSquare(BIGD *nums, BIGD *sums);
 
 int main(int argc, char *argv[])
 {
     // Initialize square as a=1, b=2, ...
     BIGD nums[9];
-    for(int i = 0; i < 9; i++)
+    int numToSet = 1;
+    for(int i = 0; numToSet <= 9; i = (i + 7) % 9)
     {
         nums[i] = bdNew();
-        bdSetShort(nums[i], i + 1);
+        bdSetShort(nums[i], numToSet++);
+    }
+    BIGD sums[9];
+    for(int i = 0; i < 9; i++)
+    {
+        sums[i] = bdNew();
     }
     int result;
     unsigned long long try = 0;
     do
     {
         try++;
-        result = checkSquare(&nums[0]);
+        result = checkSquare(nums, sums);
         if(result == 0)
         {
             // We found one!
@@ -49,13 +55,18 @@ int main(int argc, char *argv[])
                 numIsRepeated |= bdIsEqual_ct(nums[i], nums[result - 1]);
             }
         } while(numIsRepeated != 0);
-        if(try % 1000000 == 0)
+        if(try % 100000 == 0)
         {
             printf("\n%llu tries...\n", try);
             printf("Current square:\n");
             for(int i = 0; i < 9; i++)
             {
                 bdPrintDecimal("", nums[i], (i + 1) % 3 == 0 ? "\n" : ",  ");
+            }
+            printf("\nCurrent sums:\n");
+            for(int i = 0; i < 8; i++)
+            {
+                bdPrintDecimal("", sums[i], "\n");
             }
         }
     } while(1);
@@ -64,123 +75,110 @@ int main(int argc, char *argv[])
     {
         bdFree(&nums[i]);
     }
+    for(int i = 0; i < 9; i++)
+    {
+        bdFree(&sums[i]);
+    }
     return 0;
 }
 
-int checkSquare(BIGD *nums)
+int checkSquare(BIGD *nums, BIGD *sums)
 {
-    static int rowTiebreaker = 1;
-    static int colTiebreaker = 0;
-    
     BIGD squares[9];
+    BIGD numSums[9];
     for(int i = 0; i < 9; i++)
     {
         squares[i] = bdNew();
-    }
-    for(int i = 0; i < 9; i++)
-    {
         bdSquare(squares[i], nums[i]);
+        numSums[i] = bdNew();
+        bdSetZero(numSums[i]);
     }
-    BIGD rowSums[4];
-    for(int i = 0; i < 4; i++)
+    BIGD allSums[8];
+    for(int i = 0; i < 8; i++)
     {
-        rowSums[i] = bdNew();
-    }
-    BIGD colSums[4];
-    for(int i = 0; i < 4; i++)
-    {
-        colSums[i] = bdNew();
+        allSums[i] = bdNew();
+        bdSetZero(allSums[i]);
     }
     for(int i = 0; i < 3; i++)
     {
         for(int j = i * 3; j < i * 3 + 3; j++)
         {
-            bdAdd(rowSums[i], rowSums[i], squares[j]);
+            bdAdd(allSums[i], allSums[i], squares[j]);
         }
     }
-    bdAdd(rowSums[3], squares[0], squares[4]);
-    bdAdd(rowSums[3], rowSums[3], squares[8]);
-    
-    for(int i = 0; i < 3; i++)
+    for(int i = 3; i < 6; i++)
     {
-        for(int j = i; j < i + 9; j += 3)
+        for(int j = i - 3; j < 9; j += 3)
         {
-            bdAdd(colSums[i], colSums[i], squares[j]);
+            bdAdd(allSums[i], allSums[i], squares[j]);
         }
     }
-    bdAdd(colSums[3], squares[2], squares[4]);
-    bdAdd(colSums[3], colSums[3], squares[6]);
+    bdAdd(allSums[6], squares[0], squares[4]);
+    bdAdd(allSums[6], allSums[6], squares[8]);
+    
+    bdAdd(allSums[7], squares[2], squares[4]);
+    bdAdd(allSums[7], allSums[7], squares[6]);
     
     // Check if all are equal
-    int rowsAreEqual = 1;
-    for(int i = 0; i < 3; i++)
+    int allAreEqual = 1;
+    for(int i = 0; i < 7; i++)
     {
-        rowsAreEqual &= bdIsEqual_ct(rowSums[i], rowSums[i + 1]);
+        allAreEqual &= bdIsEqual_ct(allSums[i], allSums[i + 1]);
     }
-    int colsAreEqual = 1;
-    for(int i = 0; i < 3; i++)
-    {
-        colsAreEqual &= bdIsEqual_ct(colSums[i], colSums[i + 1]);
-    }
-    if(rowsAreEqual && colsAreEqual)
+    if(allAreEqual)
     {
         return 0;
     }
     
     // Figure out which entry to increment
-    int minRow = 0;
-    for(int i = 1; i < 4; i++)
+    int numSumList[9][5] =
     {
-        if(bdCompare_ct(rowSums[minRow], rowSums[i]) > 0)
-        {
-            minRow = i;
-        }
-        else if(bdCompare_ct(rowSums[minRow], rowSums[i]) == 0)
-        {
-            rowTiebreaker = ++rowTiebreaker % 4;
-            if(rowTiebreaker)
-            {
-                minRow = i;
-            }
-        }
-    }
-    int minCol = 0;
-    for(int i = 1; i < 4; i++)
-    {
-        if(bdCompare_ct(colSums[minCol], colSums[i]) > 0)
-        {
-            minCol = i;
-        }
-        else if(bdCompare_ct(colSums[minCol], colSums[i]) == 0)
-        {
-            colTiebreaker = ++colTiebreaker % 3;
-            if(colTiebreaker)
-            {
-                minCol = i;
-            }
-        }
-    }
-    int returnVals[4][4] = 
-    {
-        {1, 2, 3, 3},
-        {4, 5, 6, 5},
-        {7, 8, 9, 7},
-        {1, 5, 9, 5}
+        {0, 3, 6, -1, -1},
+        {0, 4, -1, -1, -1},
+        {0, 5, 7, -1, -1},
+        {1, 3, -1, -1, -1},
+        {1, 4, 6, 7, -1},
+        {1, 5, -1, -1, -1},
+        {2, 3, 7, -1, -1},
+        {2, 4, -1, -1, -1},
+        {2, 5, 6, -1, -1}
     };
-    
+    BIGD remainder = bdNew();
+    for(int i = 0; i < 9; i++)
+    {
+        int j = 0;
+        while(numSumList[i][j] != -1)
+        {
+            bdAdd(numSums[i], numSums[i], allSums[numSumList[i][j]]);
+            j++;
+        }
+        BIGD bigJ = bdNew();
+        bdSetShort(bigJ, j);
+        bdDivide_s(numSums[i], remainder, numSums[i], bigJ);
+        bdFree(&bigJ);
+    }
+    bdFree(&remainder);
+    // Fixing the first number as 1. Don't check it
+    int minNumSumIndex = 1;
+    for(int i = 2; i < 9; i++)
+    {
+        if(bdCompare_ct(numSums[minNumSumIndex], numSums[i]) > 0)
+        {
+            minNumSumIndex = i;
+        }
+    }
     
     for(int i = 0; i < 9; i++)
     {
         bdFree(&squares[i]);
+        // bdSetEqual(sums[i], numSums[i]);
+        bdFree(&numSums[i]);
     }
-    for(int i = 0; i < 4; i++)
+    for(int i = 0; i < 8; i++)
     {
-        bdFree(&rowSums[i]);
-    }
-    for(int i = 0; i < 4; i++)
-    {
-        bdFree(&colSums[i]);
+        bdSetEqual(sums[i], allSums[i]);
+        bdFree(&allSums[i]);
     }
     
-    return returnVals[minRow][minCol];
+    return minNumSumIndex + 1;
 }
