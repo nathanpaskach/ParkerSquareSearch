@@ -41,6 +41,10 @@ int main(int argc, char *argv[])
     {
         try++;
         result = checkSquare(seeds, nums, sums);
+        if(result == -1)
+        {
+            try--;
+        }
         if(result == 1)
         {
             // We found one!
@@ -48,30 +52,35 @@ int main(int argc, char *argv[])
             {
                 bdPrintDecimal("", nums[i], (i + 1) % 3 == 0 ? "\n" : ",  ");
             }
+            printf("\nSeeds:\n");
+            for(int i = 0; i < 3; i++)
+            {
+                bdPrintDecimal("", seeds[i], "\n");
+            }
             break;
         }
-        if(try % 1000000000 == 0)
+        if(try == 1000000)
         {
 			try = 0;
 			gigaTry++;
-            printf("\n%llu Billion tries...\n", gigaTry);
+            printf("\n%llu Million tries...\n", gigaTry);
             printf("Current square:\n");
             for(int i = 0; i < 9; i++)
             {
                 bdPrintDecimal("", nums[i], (i + 1) % 3 == 0 ? "\n" : ",  ");
             }
-            printf("\nCurrent sums:\n");
-            for(int i = 0; i < 8; i++)
-            {
-                bdPrintDecimal("", sums[i], "\n");
-            }
+            // printf("\nCurrent sums:\n");
+            // for(int i = 0; i < 8; i++)
+            // {
+                // bdPrintDecimal("", sums[i], "\n");
+            // }
             printf("\nCurrent seeds:\n");
             for(int i = 0; i < 3; i++)
             {
                 bdPrintDecimal("", seeds[i], "\n");
             }
         }
-		if(bdCompare_ct(seedLevel, seeds[0]) == 0)
+		if(bdIsEqual_ct(seedLevel, seeds[0]))
 		{
 			bdIncrement(seedLevel);
 			bdSetZero(seeds[0]);
@@ -79,7 +88,7 @@ int main(int argc, char *argv[])
 			bdSetEqual(seeds[2], seedLevel);
 			bdSetEqual(seedRow, seedLevel);
 		}
-		else if(bdCompare_ct(seedRow, seeds[1]) == 0)
+		else if(bdIsEqual_ct(seedRow, seeds[1]))
 		{
 			bdSetZero(seeds[1]);
 			bdIncrement(seeds[0]);
@@ -107,37 +116,51 @@ int main(int argc, char *argv[])
 
 int checkSquare(BIGD *seeds, BIGD *nums, BIGD *sums)
 {
-	if(bdCompare_ct(seeds[0], seeds[1]) >= 0)
+    if(bdIsZero_ct(seeds[0]) || bdIsZero_ct(seeds[1]) || bdIsZero_ct(seeds[2]))
+    {
+        return -1;
+    }
+	if(bdCompare(seeds[0], seeds[1]) >= 0)
 	{
-		return 0;
+		return -1;
+	}
+	if(bdCompare(seeds[0], seeds[2]) >= 0)
+	{
+		return -1;
 	}
 	BIGD cma = bdNew();
 	bdSubtract(cma, seeds[2], seeds[0]);
-	if(bdCompare_ct(seeds[1], cma) >= 0)
+	if(bdCompare(seeds[1], cma) >= 0)
 	{
 		bdFree(&cma);
-		return 0;
+		return -1;
 	}
 	bdFree(&cma);
 	BIGD apa = bdNew();
-	bdAdd_s(seeds[0], seeds[0], seeds[0]);
+	bdAdd(apa, seeds[0], seeds[0]);
 	if(bdIsEqual_ct(seeds[1], apa))
 	{
 		bdFree(&apa);
-		return 0;
+		return -1;
 	}
 	bdFree(&apa);
+    
+    
     BIGD apb = bdNew();
-	BIGD amb = bdNew();
 	bdAdd(apb, seeds[0], seeds[1]);
-	bdSubtract(amb, seeds[0], seeds[1]);
 	
 	bdSubtract(nums[0], seeds[2], seeds[1]);
 	bdAdd(nums[1], seeds[2], apb);
 	bdSubtract(nums[2], seeds[2], seeds[0]);
-	bdSubtract(nums[3], seeds[2], amb);
+    
+	bdAdd(nums[3], seeds[2], seeds[1]);
+	bdSubtract(nums[3], nums[3], seeds[0]);
+    
 	bdSetEqual(nums[4], seeds[2]);
-	bdAdd(nums[5], seeds[2], amb);
+    
+	bdAdd(nums[5], seeds[2], seeds[0]);
+	bdSubtract(nums[5], nums[5], seeds[1]);
+    
 	bdAdd(nums[6], seeds[2], seeds[0]);
 	bdSubtract(nums[7], seeds[2], apb);
 	bdAdd(nums[8], seeds[2], seeds[1]);
@@ -157,6 +180,7 @@ int checkSquare(BIGD *seeds, BIGD *nums, BIGD *sums)
 		}
 	}
 	
+    /*
 	for(int i = 0; i < 8; i++)
     {
         bdSetZero(sums[i]);
@@ -187,9 +211,9 @@ int checkSquare(BIGD *seeds, BIGD *nums, BIGD *sums)
     {
         allAreEqual &= bdIsEqual_ct(sums[i], sums[i + 1]);
     }
+    */
 	
 	bdFree(&apb);
-	bdFree(&amb);
 	
-	return allAreSquares && allAreEqual;
+	return allAreSquares;// && allAreEqual;
 }
