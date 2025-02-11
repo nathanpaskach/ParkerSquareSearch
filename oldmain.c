@@ -25,13 +25,11 @@ int main(int argc, char *argv[])
     bdSetShort(seedLevel, 3);
     BIGD abLimit = bdNew();
     bdSetEqual(abLimit, seedLevel);
-    BIGD remainder = bdNew();
     BIGD seeds[3];
-    // Initialize seeds as a=1, b=2, c=3
     for(int i = 0; i < 3; i++)
     {
         seeds[i] = bdNew();
-        bdSetShort(seeds[i], i);
+        bdSetZero(seeds[i]);
     }
     BIGD nums[9];
     for(int i = 0; i < 9; i++)
@@ -40,11 +38,15 @@ int main(int argc, char *argv[])
     }
     int result;
     unsigned long long try = 0;
-    unsigned long long gigaTry = 0;
     do
     {
         try++;
         result = checkSquare(seeds, nums);
+        if(result == -1)
+        {
+            // Only count valid magic squares
+            try--;
+        }
         if(result == 1)
         {
             // We found one!
@@ -61,9 +63,12 @@ int main(int argc, char *argv[])
         }
         if(try != 0 && try % 1000000 == 0)
         {
-            try = 0;
-            gigaTry++;
-            printf("\n%llu million tries...\n", gigaTry);
+            printf("\n%llu tries...\n", try);
+            printf("Current square:\n");
+            for(int i = 0; i < 9; i++)
+            {
+                bdPrintDecimal("", nums[i], (i + 1) % 3 == 0 ? "\n" : ",  ");
+            }
             printf("\nCurrent seeds:\n");
             for(int i = 0; i < 3; i++)
             {
@@ -76,14 +81,14 @@ int main(int argc, char *argv[])
             bdIncrement(seeds[1]);
             bdSetShort(seeds[0], 1);
         }
-        if(bdIsEqual_ct(seeds[1], abLimit))
+        if(bdIsEqual_ct(seeds[1], seeds[2]))
         {
             bdIncrement(seedLevel);
             bdSetShort(seeds[0], 1);
             bdSetShort(seeds[1], 2);
             bdSquare(seeds[2], seedLevel);
-            bdShortDiv(abLimit, remainder, seeds[2], 2);
-            bdAdd(abLimit, abLimit, remainder);
+            // printf("Seed level: ");
+            // bdPrintDecimal("", seedLevel, "\n");
         }
     } while(1);
     
@@ -104,22 +109,22 @@ int checkSquare(BIGD *seeds, BIGD *nums)
     // If one is not met, return -1 to indicate an invalid set of seeds.
     if(bdIsZero_ct(seeds[0]) || bdIsZero_ct(seeds[1]) || bdIsZero_ct(seeds[2]))
     {
-        return 0;
+        return -1;
     }
     if(bdCompare(seeds[0], seeds[1]) >= 0)
     {
-        return 0;
+        return -1;
     }
     if(bdCompare(seeds[0], seeds[2]) >= 0)
     {
-        return 0;
+        return -1;
     }
     BIGD cma = bdNew();
     bdSubtract(cma, seeds[2], seeds[0]);
     if(bdCompare(seeds[1], cma) >= 0)
     {
         bdFree(&cma);
-        return 0;
+        return -1;
     }
     bdFree(&cma);
     BIGD apa = bdNew();
@@ -127,7 +132,7 @@ int checkSquare(BIGD *seeds, BIGD *nums)
     if(bdIsEqual_ct(seeds[1], apa))
     {
         bdFree(&apa);
-        return 0;
+        return -1;
     }
     bdFree(&apa);
     BIGD checker = bdNew();
@@ -136,95 +141,44 @@ int checkSquare(BIGD *seeds, BIGD *nums)
     if(!bdIsEqual_ct(checker, nums[4]))
     {
         bdFree(&checker);
-        return 0;
+        return -1;
     }
     
     // Fill in the magic square with the values calculated
     // from the seeds being careful to never have a negative
     // number as an intermediate value.
-    int allAreSquares = 1;
     BIGD apb = bdNew();
     bdAdd(apb, seeds[0], seeds[1]);
     
     bdSubtract(nums[0], seeds[2], seeds[1]);
-    bdSqrt(checker, nums[0]);
-    bdSquare_s(checker, checker);
-    if(!bdIsEqual_ct(checker, nums[0]))
-    {
-        goto notAllSquares;
-    }
-    
     bdAdd(nums[1], seeds[2], apb);
-    bdSqrt(checker, nums[1]);
-    bdSquare_s(checker, checker);
-    if(!bdIsEqual_ct(checker, nums[1]))
-    {
-        goto notAllSquares;
-    }
-    
     bdSubtract(nums[2], seeds[2], seeds[0]);
-    bdSqrt(checker, nums[2]);
-    bdSquare_s(checker, checker);
-    if(!bdIsEqual_ct(checker, nums[2]))
-    {
-        goto notAllSquares;
-    }
     
     bdAdd(nums[3], seeds[2], seeds[1]);
     bdSubtract(nums[3], nums[3], seeds[0]);
-    bdSqrt(checker, nums[3]);
-    bdSquare_s(checker, checker);
-    if(!bdIsEqual_ct(checker, nums[3]))
-    {
-        goto notAllSquares;
-    }
     
     bdSetEqual(nums[4], seeds[2]);
-    bdSqrt(checker, nums[4]);
-    bdSquare_s(checker, checker);
-    if(!bdIsEqual_ct(checker, nums[4]))
-    {
-        goto notAllSquares;
-    }
     
     bdAdd(nums[5], seeds[2], seeds[0]);
     bdSubtract(nums[5], nums[5], seeds[1]);
-    bdSqrt(checker, nums[5]);
-    bdSquare_s(checker, checker);
-    if(!bdIsEqual_ct(checker, nums[5]))
-    {
-        goto notAllSquares;
-    }
     
     bdAdd(nums[6], seeds[2], seeds[0]);
-    bdSqrt(checker, nums[6]);
-    bdSquare_s(checker, checker);
-    if(!bdIsEqual_ct(checker, nums[6]))
-    {
-        goto notAllSquares;
-    }
-    
     bdSubtract(nums[7], seeds[2], apb);
-    bdSqrt(checker, nums[7]);
-    bdSquare_s(checker, checker);
-    if(!bdIsEqual_ct(checker, nums[7]))
-    {
-        goto notAllSquares;
-    }
-    
     bdAdd(nums[8], seeds[2], seeds[1]);
-    bdSqrt(checker, nums[8]);
-    bdSquare_s(checker, checker);
-    if(!bdIsEqual_ct(checker, nums[8]))
+    
+    // Check if all nums are square numbers
+    int allAreSquares = 1;
+    for(int i = 0; i < 9; i++)
     {
-        goto notAllSquares;
+        bdSqrt(checker, nums[i]);
+        bdSquare_s(checker, checker);
+        allAreSquares &= bdIsEqual_ct(checker, nums[i]);
+        if(!allAreSquares)
+        {
+            break;
+        }
     }
-    goto allSquares;
     
-    notAllSquares:
-    allAreSquares = 0;
-    
-    allSquares:
     bdFree(&apb);
     bdFree(&checker);
     
