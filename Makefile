@@ -13,3 +13,4 @@ ParkerSquareSearch.exe: $(OBJECTS)
     
 clean:
 	del /S *.o
+	del /S *.exe
