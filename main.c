@@ -73,7 +73,19 @@ int main(int argc, char *argv[])
         bdIncrement(seeds[0]);
         if(bdIsEqual_ct(seeds[0], seeds[1]))
         {
-            bdIncrement(seeds[1]);
+            BIGD checker = bdNew();
+            BIGD goal = bdNew();
+            bdSetZero(checker);
+            bdSetShort(goal, 1);
+            while(!bdIsEqual_ct(checker, goal) && !bdIsEqual_ct(seeds[1], abLimit))
+            {
+                bdIncrement(seeds[1]);
+                bdSubtract(goal, seeds[2], seeds[1]);
+                bdSqrt(checker, goal);
+                bdSquare_s(checker, checker);
+            }
+            bdFree(&checker);
+            bdFree(&goal);
             bdSetShort(seeds[0], 1);
         }
         if(bdIsEqual_ct(seeds[1], abLimit))
@@ -154,6 +166,14 @@ int checkSquare(BIGD *seeds, BIGD *nums)
         goto notAllSquares;
     }
     
+    bdAdd(nums[8], seeds[2], seeds[1]);
+    bdSqrt(checker, nums[8]);
+    bdSquare_s(checker, checker);
+    if(!bdIsEqual_ct(checker, nums[8]))
+    {
+        goto notAllSquares;
+    }
+    
     bdAdd(nums[1], seeds[2], apb);
     bdSqrt(checker, nums[1]);
     bdSquare_s(checker, checker);
@@ -208,14 +228,6 @@ int checkSquare(BIGD *seeds, BIGD *nums)
     bdSqrt(checker, nums[7]);
     bdSquare_s(checker, checker);
     if(!bdIsEqual_ct(checker, nums[7]))
-    {
-        goto notAllSquares;
-    }
-    
-    bdAdd(nums[8], seeds[2], seeds[1]);
-    bdSqrt(checker, nums[8]);
-    bdSquare_s(checker, checker);
-    if(!bdIsEqual_ct(checker, nums[8]))
     {
         goto notAllSquares;
     }
