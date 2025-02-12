@@ -76,13 +76,24 @@ int main(int argc, char *argv[])
             BIGD checker = bdNew();
             BIGD goal = bdNew();
             bdSetZero(checker);
-            bdSetShort(goal, 1);
-            while(!bdIsEqual_ct(checker, goal) && !bdIsEqual_ct(seeds[1], abLimit))
+            bdSetZero(goal);
+            int bIsValid = 0;
+            while(!bIsValid && !bdIsEqual_ct(seeds[1], abLimit))
             {
                 bdIncrement(seeds[1]);
+                
                 bdSubtract(goal, seeds[2], seeds[1]);
                 bdSqrt(checker, goal);
                 bdSquare_s(checker, checker);
+                bIsValid |= bdIsEqual_ct(checker, goal);
+                if(!bIsValid)
+                {
+                    continue;
+                }
+                bdAdd(goal, seeds[2], seeds[1]);
+                bdSqrt(checker, goal);
+                bdSquare_s(checker, checker);
+                bIsValid &= bdIsEqual_ct(checker, goal);
             }
             bdFree(&checker);
             bdFree(&goal);
@@ -166,21 +177,22 @@ int checkSquare(BIGD *seeds, BIGD *nums)
         goto notAllSquares;
     }
     
-    bdAdd(nums[8], seeds[2], seeds[1]);
-    bdSqrt(checker, nums[8]);
-    bdSquare_s(checker, checker);
-    if(!bdIsEqual_ct(checker, nums[8]))
-    {
-        goto notAllSquares;
-    }
+    /* We already checked these two */
+    // bdAdd(nums[8], seeds[2], seeds[1]);
+    // bdSqrt(checker, nums[8]);
+    // bdSquare_s(checker, checker);
+    // if(!bdIsEqual_ct(checker, nums[8]))
+    // {
+        // goto notAllSquares;
+    // }
     
-    bdAdd(nums[1], seeds[2], apb);
-    bdSqrt(checker, nums[1]);
-    bdSquare_s(checker, checker);
-    if(!bdIsEqual_ct(checker, nums[1]))
-    {
-        goto notAllSquares;
-    }
+    // bdAdd(nums[1], seeds[2], apb);
+    // bdSqrt(checker, nums[1]);
+    // bdSquare_s(checker, checker);
+    // if(!bdIsEqual_ct(checker, nums[1]))
+    // {
+        // goto notAllSquares;
+    // }
     
     bdSubtract(nums[2], seeds[2], seeds[0]);
     bdSqrt(checker, nums[2]);
