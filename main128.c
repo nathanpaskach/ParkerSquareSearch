@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "bigd.h"
+#include <stdlib.h>
 
 /*
  *  This magic square of squares search program attempts to use
@@ -16,53 +16,57 @@
  *     c+a   | c-(a+b) |  c+b 
 */
 
+#if (__SIZEOF_INT128__ == 16)
+#define BIGINT __int128
+#else
+#define BIGING int64
+#endif
 
-BIGD tmp;
-BIGD tmp2;
-BIGD digitalSum;
-BIGD remain;
-BIGD ten;
+unsigned BIGINT tmp;
+unsigned BIGINT tmp2;
+unsigned BIGINT digitalSum;
+unsigned BIGINT remain;
 
-int checkSquare(BIGD *seeds, BIGD *nums);
-int isSquare(BIGD n);
+int checkSquare(unsigned BIGINT *seeds, unsigned BIGINT *nums);
+int isSquare(unsigned BIGINT n);
+unsigned BIGINT int_sqrt(unsigned BIGINT n);
+void print_bigint(unsigned BIGINT n);
 
 int main(int argc, char *argv[])
 {
-    // Initialize global BIGD variables
-    tmp = bdNew();
-    tmp2 = bdNew();
-    digitalSum = bdNew();
-    remain = bdNew();
-    ten = bdNew();
-    bdConvFromDecimal(ten, "10");
+    printf("Using %d bit integers\n", sizeof(unsigned BIGINT) * 8);
+    // Initialize global unsigned BIGINT variables
+    tmp = 0;
+    tmp2 = 0;
+    digitalSum = 0;
+    remain = 0;
     
-    // Initialize local BIGD variables
-    BIGD seedLevel = bdNew();
-    BIGD abLimit = bdNew();
-    BIGD seeds[3];
-    BIGD nums[9];
+    // Initialize local unsigned BIGINT variables
+    unsigned BIGINT seedLevel = 0;
+    unsigned BIGINT abLimit = 0;
+    unsigned BIGINT seeds[3];
+    unsigned BIGINT nums[9];
     
     // Initialize seeds as a=1, b=2, c=3
     for(int i = 0; i < 3; i++)
     {
-        seeds[i] = bdNew();
-        bdSetShort(seeds[i], i);
+        seeds[i] = i;
     }
     
     for(int i = 0; i < 9; i++)
     {
-        nums[i] = bdNew();
+        nums[i] = 0;
     }
     
-    bdSetShort(seedLevel, 3);
+    seedLevel = 3;
     if(argc > 1)
     {
+        char *p;
         printf("setting C to %s^2\n", argv[1]);
-        bdConvFromDecimal(seedLevel, argv[1]);
-        bdSquare(seeds[2], seedLevel);
-        bdShortDiv(abLimit, remain, seeds[2], 2);
-        bdAdd(abLimit, abLimit, remain);
+        seedLevel = strtol(argv[1], &p, 10);
+        seeds[2] = seedLevel * seedLevel;
     }
+    abLimit = (seeds[2] / 2) + (seeds[2] % 2);
     
     int result;
     unsigned long long try = 0;
@@ -76,12 +80,13 @@ int main(int argc, char *argv[])
             // We found one!
             for(int i = 0; i < 9; i++)
             {
-                bdPrintDecimal("", nums[i], (i + 1) % 3 == 0 ? "\n" : ",  ");
+                print_bigint(nums[i]);
+                printf("%c", (i + 1) % 3 == 0 ? "\n" : ",  ");
             }
             printf("\nSeeds:\n");
             for(int i = 0; i < 3; i++)
             {
-                bdPrintDecimal("", seeds[i], "\n");
+                print_bigint(seeds[i]);
             }
             break;
         }
@@ -98,88 +103,66 @@ int main(int argc, char *argv[])
             for(int i = 0; i < 3; i++)
             {
                 printf("%c = ", 'A' + i);
-                bdPrintDecimal("", seeds[i], "\n");
+                print_bigint(seeds[i]);
+                printf("\n");
             }
         }
-        bdIncrement(seeds[0]);
-        if(bdIsEqual_ct(seeds[0], seeds[1]))
+        seeds[0]++;
+        if(seeds[0] == seeds[1])
         {
             int bIsValid = 0;
-            while(!bIsValid && !bdIsEqual_ct(seeds[1], abLimit))
+            while(!bIsValid && seeds[1] != abLimit)
             {
-                bdIncrement(seeds[1]);
+                seeds[1]++;
                 
-                bdSubtract(tmp2, seeds[2], seeds[1]);
+                tmp2 = seeds[2] - seeds[1];
                 bIsValid |= isSquare(tmp2);
                 if(!bIsValid)
                 {
                     continue;
                 }
-                bdAdd(tmp2, seeds[2], seeds[1]);
+                tmp2 = seeds[2] + seeds[1];
                 bIsValid &= isSquare(tmp2);
             }
-            bdSetShort(seeds[0], 1);
+            seeds[0] = 1;
         }
-        if(bdIsEqual_ct(seeds[1], abLimit))
+        if(seeds[1] == abLimit)
         {
-            bdIncrement(seedLevel);
-            bdSetShort(seeds[0], 1);
-            bdSetShort(seeds[1], 2);
-            bdSquare(seeds[2], seedLevel);
-            bdShortDiv(abLimit, remain, seeds[2], 2);
-            bdAdd(abLimit, abLimit, remain);
+            seedLevel++;
+            seeds[0] = 1;
+            seeds[1] = 2;
+            seeds[2] = seedLevel * seedLevel;
+            abLimit = (seeds[2] / 2) + (seeds[2] % 2);
         }
     } while(1);
     
-    for(int i = 0; i < 3; i++)
-    {
-        bdFree(&seeds[i]);
-    }
-    for(int i = 0; i < 9; i++)
-    {
-        bdFree(&nums[i]);
-    }
-    bdFree(&seedLevel);
-    bdFree(&abLimit);
-    bdFree(&tmp);
-    bdFree(&digitalSum);
-    bdFree(&remain);
-    bdFree(&ten);
     return 0;
 }
 
-int checkSquare(BIGD *seeds, BIGD *nums)
+int checkSquare(unsigned BIGINT *seeds, unsigned BIGINT *nums)
 {
     // First, check to make sure all conditions for the seeds are met.
     // If one is not met, return -1 to indicate an invalid set of seeds.
-    if(bdIsZero_ct(seeds[0]) || bdIsZero_ct(seeds[1]) || bdIsZero_ct(seeds[2]))
+    if(seeds[0] == 0 || seeds[1] == 0 || seeds[2] == 0)
     {
         return 0;
     }
-    if(bdCompare(seeds[0], seeds[1]) >= 0)
+    if(seeds[0] >= seeds[1])
     {
         return 0;
     }
-    if(bdCompare(seeds[0], seeds[2]) >= 0)
+    if(seeds[0] >= seeds[2])
     {
         return 0;
     }
-    BIGD cma = bdNew();
-    bdSubtract(cma, seeds[2], seeds[0]);
-    if(bdCompare(seeds[1], cma) >= 0)
+    if(seeds[1] >= seeds[2] - seeds[0])
     {
-        bdFree(&cma);
         return 0;
     }
-    bdFree(&cma);
-    BIGD apa = bdNew();
-    bdAdd(apa, seeds[0], seeds[0]);
-    if(bdIsEqual_ct(seeds[1], apa))
+    if(seeds[1] == seeds[0] + seeds[0])
     {
-        bdFree(&apa);
         return 0;
     }
-    bdFree(&apa);
     
     // Fill in the magic square with the values calculated
     // from the seeds being careful to never have a negative
@@ -187,43 +170,40 @@ int checkSquare(BIGD *seeds, BIGD *nums)
     // Check if they're squares along the way so we can
     // return as soon as one isn't a square
     int allAreSquares = 1;
-    BIGD checker = bdNew();
-    BIGD apb = bdNew();
-    bdAdd(apb, seeds[0], seeds[1]);
+    unsigned BIGINT apb = 0;
+    apb = seeds[0] + seeds[1];
     
-    bdAdd(nums[1], seeds[2], apb);
+    nums[1] = seeds[2] + apb;
     if(!isSquare(nums[1]))
     {
         goto notAllSquares;
     }
     
-    bdSubtract(nums[2], seeds[2], seeds[0]);
+    nums[2] = seeds[2] - seeds[0];
     if(!isSquare(nums[2]))
     {
         goto notAllSquares;
     }
     
-    bdAdd(nums[3], seeds[2], seeds[1]);
-    bdSubtract(nums[3], nums[3], seeds[0]);
+    nums[3] = seeds[2] + seeds[1] - seeds[0];
     if(!isSquare(nums[3]))
     {
         goto notAllSquares;
     }
     
-    bdAdd(nums[5], seeds[2], seeds[0]);
-    bdSubtract(nums[5], nums[5], seeds[1]);
+    nums[5] = seeds[2] + seeds[0] - seeds[1];
     if(!isSquare(nums[5]))
     {
         goto notAllSquares;
     }
     
-    bdAdd(nums[6], seeds[2], seeds[0]);
+    nums[6] = seeds[2] + seeds[0];
     if(!isSquare(nums[6]))
     {
         goto notAllSquares;
     }
     
-    bdSubtract(nums[7], seeds[2], apb);
+    nums[7] = seeds[2] - apb;
     if(!isSquare(nums[7]))
     {
         goto notAllSquares;
@@ -234,47 +214,88 @@ int checkSquare(BIGD *seeds, BIGD *nums)
     allAreSquares = 0;
     
     allSquares:
-    bdFree(&apb);
-    bdFree(&checker);
     
     // We already checked these three, so just put them in the grid
-    bdSubtract(nums[0], seeds[2], seeds[1]);
-    bdSetEqual(nums[4], seeds[2]);
-    bdAdd(nums[8], seeds[2], seeds[1]);
+    nums[0] = seeds[2] - seeds[1];
+    nums[4] = seeds[2];
+    nums[8] = seeds[2] + seeds[1];
     
     return allAreSquares;
 }
 
-int isSquare(BIGD n)
+int isSquare(unsigned BIGINT n)
 {
     // Check least significant digit first
-    uint32_t digit = bdToShort(n);
+    int digit = n % 10;
     if(digit == 2 || digit == 3 || digit == 7 || digit == 8)
     {
         return 0;
     }
     
     // Check digital summation
-    bdSetEqual(tmp, n);
+    tmp = n;
     do
     {
-        bdSetZero(digitalSum);
-        while(!bdIsZero_ct(tmp))
+        digitalSum = 0;
+        while(tmp != 0)
         {
-            bdDivide_s(tmp, remain, tmp, ten);
-            bdAdd(digitalSum, digitalSum, remain);
+            remain = tmp % 10;
+            tmp /= 10;
+            digitalSum += remain;
         }
-        bdSetEqual(tmp, digitalSum);
-    } while(bdShortCmp(digitalSum, 9) > 0);
+        tmp = digitalSum;
+    } while(digitalSum > 9);
     
-    digit = bdToShort(digitalSum);
+    digit = digitalSum % 10;
     if(digit == 0 || digit == 2 || digit == 3 || digit == 5 || digit == 6 || digit == 8)
     {
         return 0;
     }
     
     // Now check with sqrt and square functions
-    bdSqrt(tmp, n);
-    bdSquare_s(tmp, tmp);
-    return bdIsEqual_ct(tmp, n);
+    tmp = int_sqrt(n);
+    tmp = tmp * tmp;
+    return tmp == n;
+}
+
+unsigned BIGINT int_sqrt(unsigned BIGINT n)
+{
+    if (n == 0)
+    {
+        return 0;
+    }
+    unsigned BIGINT low = 1, high = n, ans = 0;
+    while (low <= high) {
+        unsigned BIGINT mid = low + (high - low) / 2;
+        if (mid <= n / mid)
+        {
+            ans = mid;
+            low = mid + 1;
+        }
+        else
+        {
+            high = mid - 1;
+        }
+    }
+    return ans;
+}
+
+void print_bigint(unsigned BIGINT n)
+{
+    if (n == 0)
+    {
+        printf("0");
+        return;
+    }
+
+    char buffer[40];
+    int index = 39;
+    buffer[index--] = '\0';
+
+    unsigned BIGINT u = n;
+    while (u > 0) {
+        buffer[index--] = '0' + (u % 10);
+        u /= 10;
+    }
+    printf("%s", &buffer[index + 1]);
 }
