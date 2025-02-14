@@ -1,7 +1,7 @@
 OBJECTS= bigd.o bigdigits.o main.o
 OBJECTS128= main128.o
 INCLUDES= bigd.h bigdigits.h bigdtypes.h
-CFLAGS= -std=c99 -Wall -Wpointer-arith -Wstrict-prototypes -Wno-format -O2
+CFLAGS= -std=c99 -Wall -Wpointer-arith -Wstrict-prototypes -Wno-format -O3
 CC= gcc
 
 default: ParkerSquareSearch.exe ParkerSquareSearch128.exe

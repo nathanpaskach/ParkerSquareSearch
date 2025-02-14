@@ -164,11 +164,9 @@ int checkSquare(unsigned BIGINT *seeds, unsigned BIGINT *nums)
         return 0;
     }
     
-    // Fill in the magic square with the values calculated
-    // from the seeds being careful to never have a negative
-    // number as an intermediate value.
+    // Fill in the magic square with the values calculated.
     // Check if they're squares along the way so we can
-    // return as soon as one isn't a square
+    // return as soon as one isn't a square.
     int allAreSquares = 1;
     unsigned BIGINT apb = 0;
     apb = seeds[0] + seeds[1];
@@ -214,7 +212,6 @@ int checkSquare(unsigned BIGINT *seeds, unsigned BIGINT *nums)
     allAreSquares = 0;
     
     allSquares:
-    
     // We already checked these three, so just put them in the grid
     nums[0] = seeds[2] - seeds[1];
     nums[4] = seeds[2];
@@ -265,7 +262,8 @@ unsigned BIGINT int_sqrt(unsigned BIGINT n)
         return 0;
     }
     unsigned BIGINT low = 1, high = n, ans = 0;
-    while (low <= high) {
+    while (low <= high)
+    {
         unsigned BIGINT mid = low + (high - low) / 2;
         if (mid <= n / mid)
         {
@@ -293,7 +291,8 @@ void print_bigint(unsigned BIGINT n)
     buffer[index--] = '\0';
 
     unsigned BIGINT u = n;
-    while (u > 0) {
+    while (u > 0)
+    {
         buffer[index--] = '0' + (u % 10);
         u /= 10;
     }
