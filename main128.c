@@ -19,7 +19,7 @@
 #if (__SIZEOF_INT128__ == 16)
 #define BIGINT __int128
 #else
-#define BIGING int64
+#define BIGINT long long
 #endif
 
 unsigned BIGINT tmp;
